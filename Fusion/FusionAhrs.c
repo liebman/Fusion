@@ -126,7 +126,7 @@ void FusionAhrsUpdate(FusionAhrs *const ahrs, const FusionVector gyroscope, cons
     if (FusionVectorIsZero(accelerometer) == false) {
 
         // Enter acceleration recovery state if acceleration rejection times out
-        if (ahrs->accelerationRejectionTimer >= ahrs->settings.rejectionTimeout) {
+        if (ahrs->accelerationRejectionTimer > ahrs->settings.rejectionTimeout) {
             const FusionQuaternion quaternion = ahrs->quaternion;
             FusionAhrsReset(ahrs);
             ahrs->quaternion = quaternion;
@@ -154,7 +154,7 @@ void FusionAhrsUpdate(FusionAhrs *const ahrs, const FusionVector gyroscope, cons
 
         // Set to compass heading if magnetic rejection times out
         ahrs->magneticRejectionTimeout = false;
-        if (ahrs->magneticRejectionTimer >= ahrs->settings.rejectionTimeout) {
+        if (ahrs->magneticRejectionTimer > ahrs->settings.rejectionTimeout) {
             FusionAhrsSetHeading(ahrs, FusionCompassCalculateHeading(halfGravity, magnetometer));
             ahrs->magneticRejectionTimer = 0;
             ahrs->magneticRejectionTimeout = true;
@@ -301,14 +301,13 @@ FusionVector FusionAhrsGetEarthAcceleration(const FusionAhrs *const ahrs) {
  * @return AHRS algorithm internal states.
  */
 FusionAhrsInternalStates FusionAhrsGetInternalStates(const FusionAhrs *const ahrs) {
-    const float rejectionTimeoutReciprocal = 1.0f / (float) ahrs->settings.rejectionTimeout;
     const FusionAhrsInternalStates internalStates = {
-            .accelerationError = FusionRadiansToDegrees(asinf(2.0f * FusionVectorMagnitude(ahrs->halfAccelerometerFeedback))),
+            .accelerationError = FusionRadiansToDegrees(FusionAsin(2.0f * FusionVectorMagnitude(ahrs->halfAccelerometerFeedback))),
             .accelerometerIgnored = ahrs->accelerometerIgnored,
-            .accelerationRejectionTimer = (float) ahrs->accelerationRejectionTimer * rejectionTimeoutReciprocal,
-            .magneticError = FusionRadiansToDegrees(asinf(2.0f * FusionVectorMagnitude(ahrs->halfMagnetometerFeedback))),
+            .accelerationRejectionTimer = ahrs->settings.rejectionTimeout == 0 ? 0.0f : (float) ahrs->accelerationRejectionTimer / (float) ahrs->settings.rejectionTimeout,
+            .magneticError = FusionRadiansToDegrees(FusionAsin(2.0f * FusionVectorMagnitude(ahrs->halfMagnetometerFeedback))),
             .magnetometerIgnored = ahrs->magnetometerIgnored,
-            .magneticRejectionTimer = (float) ahrs->magneticRejectionTimer * rejectionTimeoutReciprocal,
+            .magneticRejectionTimer = ahrs->settings.rejectionTimeout == 0 ? 0.0f : (float) ahrs->magneticRejectionTimer / (float) ahrs->settings.rejectionTimeout,
     };
     return internalStates;
 }
